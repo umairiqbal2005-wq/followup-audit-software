@@ -1,0 +1,52 @@
+services:
+  backend:
+    build: ./backend
+    environment:
+      APP_ENV: development
+      DB_BACKEND: sqlite
+      SQLITE_PATH: /data/aop.db
+      REDIS_ENABLED: "false"
+      LDAP_ENABLED: "false"
+      SECRET_KEY: dev-secret-change-in-production
+      CORS_ORIGINS: http://localhost:3000,http://localhost
+      UPLOAD_DIR: /data/uploads
+      DEV_ADMIN_USERNAME: admin
+      DEV_ADMIN_PASSWORD: Admin@123
+      DEV_ADMIN_EMAIL: admin@example.com
+    volumes:
+      - aop_data:/data
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    profiles: ["full"]
+
+  # Optional Oracle XE for closer-to-prod local stacks (large image).
+  # oracle:
+  #   image: gvenzl/oracle-xe:21-slim
+  #   environment:
+  #     ORACLE_PASSWORD: OraclePass123
+  #     APP_USER: aop_app
+  #     APP_USER_PASSWORD: aop_password
+  #   ports:
+  #     - "1521:1521"
+  #   profiles: ["oracle"]
+
+volumes:
+  aop_data:
