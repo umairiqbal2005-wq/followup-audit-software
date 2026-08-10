@@ -83,7 +83,7 @@ class AuthService:
         }
 
     def ensure_dev_admin(self) -> None:
-        if self.settings.ldap_enabled:
+        if not self.settings.should_bootstrap_dev_users:
             return
         existing = self.db.query(User).filter(User.username == self.settings.dev_admin_username).first()
         if existing:

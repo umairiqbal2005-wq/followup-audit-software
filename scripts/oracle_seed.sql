@@ -1,8 +1,13 @@
--- Seed roles reference data and optional demo admin for Oracle environments.
+-- Seed notes for Oracle environments.
 -- Prefer provisioning ADMIN via LDAP/AD group mapping in production.
+-- Do not embed real passwords in this file.
 
--- Example: create application user (run as SYS)
--- CREATE TABLESPACE aop_data DATAFILE 'aop_data01.dbf' SIZE 2G AUTOEXTEND ON;
--- CREATE USER aop_app IDENTIFIED BY "CHANGE_ME" DEFAULT TABLESPACE aop_data QUOTA UNLIMITED ON aop_data;
--- GRANT CONNECT, RESOURCE TO aop_app;
--- GRANT CREATE VIEW, CREATE SEQUENCE TO aop_app;
+-- Deployment order:
+--   1) scripts/oracle_provision.sql   (SYSDBA)
+--   2) scripts/oracle_ddl.sql         (AOP_OWNER)
+--   3) scripts/oracle_grants.sql      (AOP_OWNER)
+--   4) scripts/oracle_hardening.sql   (SYSDBA)
+--   5) Point API at AOP_APP with TCPS/wallet settings
+
+-- Optional break-glass local admin (only if LDAP unavailable). Prefer app bootstrap
+-- with LDAP_ENABLED=false in a controlled window, then disable local passwords.

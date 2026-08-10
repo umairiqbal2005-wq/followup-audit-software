@@ -105,12 +105,23 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for VM sizing, Oracle tuning, LDAP integratio
 
 See [SECURITY.md](SECURITY.md) for architecture, data flows, authentication, and controls for your information security team.
 
+## Oracle production hardening
+
+Apply scripts in order (see [DEPLOYMENT.md](DEPLOYMENT.md)):
+
+1. `scripts/oracle_provision.sql` (SYSDBA) — tablespaces, profile, `AOP_OWNER` / `AOP_APP`
+2. `scripts/oracle_ddl.sql` (`AOP_OWNER`) — schema, indexes, immutable history triggers
+3. `scripts/oracle_grants.sql` (`AOP_OWNER`) — least-privilege grants to runtime user
+4. `scripts/oracle_hardening.sql` (SYSDBA) — Unified Audit policies
+
+Runtime API must connect as **`aop_app`** with `ORACLE_SCHEMA=AOP_OWNER` (and preferably TCPS/wallet).
+
 ## Source Code Layout
 
 ```
 backend/app/          # Python FastAPI application
 frontend/src/         # React TypeScript SPA
-scripts/              # Oracle DDL and seed notes
+scripts/              # Oracle provision, DDL, grants, hardening
 nginx/                # Reverse proxy configuration
 docker-compose*.yml   # Container orchestration
 ```

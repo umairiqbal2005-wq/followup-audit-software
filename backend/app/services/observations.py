@@ -5,6 +5,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
+from app.core.database import next_observation_sequence_value
 from app.models import (
     Observation,
     ObservationHistory,
@@ -34,8 +35,11 @@ class ObservationService:
         self.db = db
 
     def _next_observation_number(self) -> str:
-        count = self.db.query(func.count(Observation.id)).scalar() or 0
         year = _now().year
+        seq = next_observation_sequence_value(self.db)
+        if seq is not None:
+            return f"OBS-{year}-{int(seq):05d}"
+        count = self.db.query(func.count(Observation.id)).scalar() or 0
         return f"OBS-{year}-{count + 1:05d}"
 
     def _history(
