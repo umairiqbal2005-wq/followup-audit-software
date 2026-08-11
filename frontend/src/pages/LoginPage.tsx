@@ -5,7 +5,7 @@ import { useAuth } from "../hooks/useAuth";
 export function LoginPage() {
   const { user, login } = useAuth();
   const [username, setUsername] = useState("umair");
-  const [password, setPassword] = useState("Umair@123");
+  const [password, setPassword] = useState("demo123");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -51,15 +51,15 @@ export function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <div style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.45 }}>
-          <strong style={{ color: "var(--ink)" }}>Admin logins</strong>
+          <strong style={{ color: "var(--ink)" }}>Demo password for all users:</strong> <code>demo123</code>
           <div>
-            <code>umair</code> / <code>Umair@123</code> — full admin (roles & regions)
+            <code>umair</code> — full admin (roles & regions)
           </div>
           <div>
-            <code>admin</code> / <code>Admin@123</code> — full admin
+            <code>admin</code> — full admin
           </div>
           <div style={{ marginTop: "0.45rem" }}>
-            Regional demo: <code>khurrum</code> / <code>Pass@123</code> (North only)
+            Regional demo: <code>khurrum</code> (North only)
           </div>
         </div>
       </form>

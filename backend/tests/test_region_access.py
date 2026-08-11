@@ -4,8 +4,8 @@ from tests.conftest import login
 
 
 def test_admin_assigns_north_region_and_user_is_scoped(client: TestClient):
-    admin = login(client, "admin", "Admin@123")
-    khurrum = login(client, "khurrum", "Pass@123")
+    admin = login(client, "admin", "demo123")
+    khurrum = login(client, "khurrum", "demo123")
 
     me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {khurrum}"})
     assert me.status_code == 200
@@ -78,7 +78,7 @@ def test_admin_assigns_north_region_and_user_is_scoped(client: TestClient):
 
 
 def test_admin_can_reassign_user_regions(client: TestClient):
-    admin = login(client, "admin", "Admin@123")
+    admin = login(client, "admin", "demo123")
     users = client.get("/api/users", headers={"Authorization": f"Bearer {admin}"})
     south_user = next(u for u in users.json() if u["username"] == "south_viewer")
 

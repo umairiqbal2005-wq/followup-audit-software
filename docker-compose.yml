@@ -11,7 +11,7 @@ services:
       CORS_ORIGINS: http://localhost:3000,http://localhost
       UPLOAD_DIR: /data/uploads
       DEV_ADMIN_USERNAME: admin
-      DEV_ADMIN_PASSWORD: Admin@123
+      DEV_ADMIN_PASSWORD: demo123
       DEV_ADMIN_EMAIL: admin@example.com
     volumes:
       - aop_data:/data

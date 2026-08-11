@@ -23,7 +23,7 @@ export function UsersPage() {
     username: "",
     email: "",
     full_name: "",
-    password: "Pass@12345",
+    password: "demo123",
     role: "VIEWER" as UserRole,
     department: "",
     regions: [] as Region[],
@@ -141,7 +141,7 @@ export function UsersPage() {
                 value={createForm.password}
                 onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
                 required
-                minLength={8}
+                minLength={6}
               />
             </label>
             <label>

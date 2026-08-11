@@ -10,16 +10,16 @@ def test_health(client: TestClient):
 
 
 def test_login_and_me(client: TestClient):
-    token = login(client, "admin", "Admin@123")
+    token = login(client, "admin", "demo123")
     resp = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert resp.status_code == 200
     assert resp.json()["role"] == "ADMIN"
 
 
 def test_observation_workflow(client: TestClient):
-    admin = login(client, "admin", "Admin@123")
-    central = login(client, "central1", "Pass@123")
-    owner = login(client, "owner1", "Pass@123")
+    admin = login(client, "admin", "demo123")
+    central = login(client, "central1", "demo123")
+    owner = login(client, "owner1", "demo123")
 
     report = client.post(
         "/api/reports",

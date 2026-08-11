@@ -73,15 +73,15 @@ Seeded local users (LDAP disabled):
 
 | Username | Password | Role |
 |----------|----------|------|
-| `admin` | `Admin@123` | ADMIN |
-| `umair` | `Umair@123` | ADMIN (owner — manage roles & regions) |
-| `central1` | `Pass@123` | CENTRAL_TEAM |
-| `owner1` | `Pass@123` | PROCESS_OWNER |
-| `auditor1` | `Pass@123` | AUDITOR |
-| `viewer1` | `Pass@123` | VIEWER |
-| `khurrum` | `Pass@123` | VIEWER (North region only, all segments) |
-| `north_auditor` | `Pass@123` | AUDITOR (North) |
-| `south_viewer` | `Pass@123` | VIEWER (South) |
+| `admin` | `demo123` | ADMIN |
+| `umair` | `demo123` | ADMIN (owner — manage roles & regions) |
+| `central1` | `demo123` | CENTRAL_TEAM |
+| `owner1` | `demo123` | PROCESS_OWNER |
+| `auditor1` | `demo123` | AUDITOR |
+| `viewer1` | `demo123` | VIEWER |
+| `khurrum` | `demo123` | VIEWER (North region only, all segments) |
+| `north_auditor` | `demo123` | AUDITOR (North) |
+| `south_viewer` | `demo123` | VIEWER (South) |
 
 ### Frontend
 

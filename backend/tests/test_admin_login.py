@@ -4,7 +4,7 @@ from tests.conftest import login
 
 
 def test_umair_admin_can_manage_users(client: TestClient):
-    token = login(client, "umair", "Umair@123")
+    token = login(client, "umair", "demo123")
     me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
     assert me.json()["role"] == "ADMIN"
@@ -21,7 +21,7 @@ def test_umair_admin_can_manage_users(client: TestClient):
 
 
 def test_admin_login_still_works(client: TestClient):
-    token = login(client, "admin", "Admin@123")
+    token = login(client, "admin", "demo123")
     me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {token}"})
     assert me.status_code == 200
     assert me.json()["role"] == "ADMIN"

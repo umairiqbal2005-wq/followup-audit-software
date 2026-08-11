@@ -55,7 +55,7 @@ class Settings(BaseSettings):
     health_check_db: bool = True
 
     dev_admin_username: str = "admin"
-    dev_admin_password: str = "Admin@123"
+    dev_admin_password: str = "demo123"
     dev_admin_email: str = "admin@example.com"
     # Never auto-seed local users when true (production)
     disable_dev_bootstrap: bool = Field(default=False)

@@ -33,7 +33,7 @@ class UserBase(BaseModel):
 
 
 class UserCreate(UserBase):
-    password: Optional[str] = Field(default=None, min_length=8)
+    password: Optional[str] = Field(default=None, min_length=6)
     regions: list[Region] = Field(default_factory=list)
     segments: list[AuditSegment] = Field(default_factory=list)
 
@@ -44,7 +44,7 @@ class UserUpdate(BaseModel):
     role: Optional[UserRole] = None
     department: Optional[str] = None
     is_active: Optional[bool] = None
-    password: Optional[str] = Field(default=None, min_length=8)
+    password: Optional[str] = Field(default=None, min_length=6)
     regions: Optional[list[Region]] = None
     segments: Optional[list[AuditSegment]] = None
 
