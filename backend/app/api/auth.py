@@ -33,9 +33,14 @@ def _user_out(user: User) -> UserOut:
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]):
     service = AuthService(db)
-    user = service.authenticate(payload.username, payload.password)
+    username = (payload.username or "").strip()
+    password = payload.password or ""
+    user = service.authenticate(username, password)
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password. Dev logins: admin/demo123 or umair/demo123",
+        )
     return service.issue_token(user)
 
 

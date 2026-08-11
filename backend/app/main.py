@@ -24,6 +24,12 @@ async def lifespan(_: FastAPI):
         db = SessionLocal()
         try:
             AuthService(db).ensure_dev_admin()
+            print(
+                "AOP bootstrap ready — login with "
+                f"{settings.dev_admin_username}/{settings.dev_admin_password} "
+                "or umair/" + settings.dev_admin_password,
+                flush=True,
+            )
         finally:
             db.close()
     yield
