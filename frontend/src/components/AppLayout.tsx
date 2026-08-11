@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
+import { REGION_LABELS, SEGMENT_LABELS } from "../types";
 
 const links = [
   { to: "/", label: "Dashboard" },
@@ -30,6 +31,28 @@ export function AppLayout() {
         <div className="user-card">
           <strong>{user?.full_name}</strong>
           <div>{user?.role.replaceAll("_", " ")}</div>
+          <div className="scope-chip-row">
+            {user?.role === "ADMIN" ? (
+              <span className="scope-chip">All regions</span>
+            ) : (
+              (user?.regions || []).map((r) => (
+                <span className="scope-chip" key={r}>
+                  {REGION_LABELS[r]}
+                </span>
+              ))
+            )}
+          </div>
+          <div className="scope-chip-row">
+            {user?.role === "ADMIN" ? (
+              <span className="scope-chip">All segments</span>
+            ) : (
+              (user?.segments || []).slice(0, 3).map((s) => (
+                <span className="scope-chip" key={s}>
+                  {SEGMENT_LABELS[s]}
+                </span>
+              ))
+            )}
+          </div>
           <button className="btn secondary" style={{ marginTop: "0.9rem", width: "100%" }} onClick={logout}>
             Sign out
           </button>

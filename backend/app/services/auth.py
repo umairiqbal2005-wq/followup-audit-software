@@ -1,11 +1,12 @@
 from typing import Optional
 
 from ldap3 import ALL, Connection, Server
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import get_settings
 from app.core.security import create_access_token, hash_password, verify_password
-from app.models import User, UserRole
+from app.models import AuditSegment, Region, User, UserRole
+from app.services.access import ALL_REGIONS, ALL_SEGMENTS, set_user_regions, set_user_segments
 
 
 class AuthService:
@@ -21,7 +22,12 @@ class AuthService:
         return self._authenticate_local(username, password)
 
     def _authenticate_local(self, username: str, password: str) -> Optional[User]:
-        user = self.db.query(User).filter(User.username == username, User.is_active.is_(True)).first()
+        user = (
+            self.db.query(User)
+            .options(joinedload(User.region_access), joinedload(User.segment_access))
+            .filter(User.username == username, User.is_active.is_(True))
+            .first()
+        )
         if not user or not user.hashed_password:
             return None
         if not verify_password(password, user.hashed_password):
@@ -32,7 +38,6 @@ class AuthService:
         settings = self.settings
         server = Server(settings.ldap_url, get_info=ALL, use_ssl=settings.ldap_use_ssl)
         try:
-            # Service bind to search user DN
             with Connection(
                 server,
                 user=settings.ldap_bind_dn,
@@ -46,11 +51,15 @@ class AuthService:
                 entry = conn.entries[0]
                 user_dn = entry.entry_dn
 
-            # Bind as user to verify password
             with Connection(server, user=user_dn, password=password, auto_bind=True):
                 pass
 
-            user = self.db.query(User).filter(User.username == username).first()
+            user = (
+                self.db.query(User)
+                .options(joinedload(User.region_access), joinedload(User.segment_access))
+                .filter(User.username == username)
+                .first()
+            )
             if not user:
                 email = str(entry.mail) if hasattr(entry, "mail") and entry.mail else f"{username}@example.com"
                 full_name = str(entry.cn) if hasattr(entry, "cn") and entry.cn else username
@@ -74,7 +83,13 @@ class AuthService:
     def issue_token(self, user: User) -> dict:
         token = create_access_token(
             subject=user.username,
-            claims={"uid": user.id, "role": user.role, "name": user.full_name},
+            claims={
+                "uid": user.id,
+                "role": user.role,
+                "name": user.full_name,
+                "regions": sorted({r.region for r in user.region_access or []}),
+                "segments": sorted({s.segment for s in user.segment_access or []}),
+            },
         )
         return {
             "access_token": token,
@@ -98,23 +113,27 @@ class AuthService:
             is_active=True,
         )
         self.db.add(admin)
-        # Seed a few demo users for local testing
         demos = [
-            ("central1", "central1@example.com", "Central Reviewer", UserRole.CENTRAL_TEAM, "Audit"),
-            ("owner1", "owner1@example.com", "Process Owner", UserRole.PROCESS_OWNER, "Operations"),
-            ("auditor1", "auditor1@example.com", "Lead Auditor", UserRole.AUDITOR, "Audit"),
-            ("viewer1", "viewer1@example.com", "Dashboard Viewer", UserRole.VIEWER, "Management"),
+            ("central1", "central1@example.com", "Central Reviewer", UserRole.CENTRAL_TEAM, "Audit", ALL_REGIONS, ALL_SEGMENTS),
+            ("owner1", "owner1@example.com", "Process Owner", UserRole.PROCESS_OWNER, "Operations", [Region.CENTRAL.value], ALL_SEGMENTS),
+            ("auditor1", "auditor1@example.com", "Lead Auditor", UserRole.AUDITOR, "Audit", ALL_REGIONS, ALL_SEGMENTS),
+            ("viewer1", "viewer1@example.com", "Dashboard Viewer", UserRole.VIEWER, "Management", [Region.CENTRAL.value], [AuditSegment.MANAGEMENT.value]),
+            ("khurrum", "khurrum@example.com", "Khurrum North", UserRole.VIEWER, "North Region", [Region.NORTH.value], ALL_SEGMENTS),
+            ("north_auditor", "north.auditor@example.com", "North Auditor", UserRole.AUDITOR, "North Region", [Region.NORTH.value], ALL_SEGMENTS),
+            ("south_viewer", "south.viewer@example.com", "South Viewer", UserRole.VIEWER, "South Region", [Region.SOUTH.value], ALL_SEGMENTS),
         ]
-        for username, email, name, role, dept in demos:
-            self.db.add(
-                User(
-                    username=username,
-                    email=email,
-                    full_name=name,
-                    role=role.value,
-                    hashed_password=hash_password("Pass@123"),
-                    department=dept,
-                    is_active=True,
-                )
+        for username, email, name, role, dept, regions, segments in demos:
+            user = User(
+                username=username,
+                email=email,
+                full_name=name,
+                role=role.value,
+                hashed_password=hash_password("Pass@123"),
+                department=dept,
+                is_active=True,
             )
+            self.db.add(user)
+            self.db.flush()
+            set_user_regions(self.db, user, regions)
+            set_user_segments(self.db, user, segments)
         self.db.commit()

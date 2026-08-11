@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.core.database import next_observation_sequence_value
 from app.models import (
+    AuditReport,
     Observation,
     ObservationHistory,
     ObservationResponse,
@@ -24,6 +25,12 @@ from app.schemas import (
     ObservationUpdate,
     ObservationVerify,
 )
+from app.services.access import (
+    apply_observation_scope,
+    can_access_scope,
+    load_user_access,
+    require_scope,
+)
 
 
 def _now() -> datetime:
@@ -33,6 +40,9 @@ def _now() -> datetime:
 class ObservationService:
     def __init__(self, db: Session):
         self.db = db
+
+    def _actor(self, actor: User) -> User:
+        return load_user_access(self.db, actor)
 
     def _next_observation_number(self) -> str:
         year = _now().year
@@ -63,14 +73,26 @@ class ObservationService:
         )
 
     def create(self, data: ObservationCreate, actor: User) -> Observation:
+        actor = self._actor(actor)
         if actor.role not in {UserRole.ADMIN.value, UserRole.CENTRAL_TEAM.value, UserRole.AUDITOR.value}:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not allowed to create observations")
+        report = self.db.query(AuditReport).filter(AuditReport.id == data.report_id).first()
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+        require_scope(actor, report.region, report.segment, action="create observations on")
+
+        region = data.region.value if data.region else report.region
+        segment = data.segment.value if data.segment else report.segment
+        require_scope(actor, region, segment, action="create observations in")
+
         obs = Observation(
             report_id=data.report_id,
             observation_number=self._next_observation_number(),
             title=data.title,
             description=data.description,
             category=data.category,
+            region=region,
+            segment=segment,
             severity=data.severity.value,
             recommendation=data.recommendation,
             status=ObservationStatus.DRAFT.value,
@@ -84,7 +106,8 @@ class ObservationService:
         return obs
 
     def submit_for_review(self, observation_id: int, actor: User) -> Observation:
-        obs = self.get(observation_id)
+        actor = self._actor(actor)
+        obs = self.get(observation_id, actor)
         if obs.status != ObservationStatus.DRAFT.value:
             raise HTTPException(status_code=400, detail="Only draft observations can be submitted")
         if actor.role not in {UserRole.ADMIN.value, UserRole.CENTRAL_TEAM.value, UserRole.AUDITOR.value}:
@@ -97,14 +120,21 @@ class ObservationService:
         return obs
 
     def assign(self, observation_id: int, data: ObservationAssign, actor: User) -> Observation:
+        actor = self._actor(actor)
         if actor.role not in {UserRole.ADMIN.value, UserRole.CENTRAL_TEAM.value}:
             raise HTTPException(status_code=403, detail="Only central team can assign")
-        obs = self.get(observation_id)
+        obs = self.get(observation_id, actor)
         if obs.status not in {ObservationStatus.PENDING_REVIEW.value, ObservationStatus.ASSIGNED.value}:
             raise HTTPException(status_code=400, detail="Observation not ready for assignment")
         owner = self.db.query(User).filter(User.id == data.owner_id, User.is_active.is_(True)).first()
         if not owner or owner.role not in {UserRole.PROCESS_OWNER.value, UserRole.ADMIN.value}:
             raise HTTPException(status_code=400, detail="Invalid process owner")
+        owner = load_user_access(self.db, owner)
+        if owner.role != UserRole.ADMIN.value and not can_access_scope(owner, obs.region, obs.segment):
+            raise HTTPException(
+                status_code=400,
+                detail="Process owner is not authorized for this observation region/segment",
+            )
         prev = obs.status
         obs.owner_id = owner.id
         obs.assigned_by_id = actor.id
@@ -116,7 +146,8 @@ class ObservationService:
         return obs
 
     def respond(self, observation_id: int, data: ObservationResponseCreate, actor: User) -> Observation:
-        obs = self.get(observation_id)
+        actor = self._actor(actor)
+        obs = self.get(observation_id, actor)
         if actor.role not in {UserRole.PROCESS_OWNER.value, UserRole.ADMIN.value}:
             raise HTTPException(status_code=403, detail="Only process owners can respond")
         if obs.owner_id != actor.id and actor.role != UserRole.ADMIN.value:
@@ -149,9 +180,10 @@ class ObservationService:
         return obs
 
     def verify(self, observation_id: int, data: ObservationVerify, actor: User) -> Observation:
+        actor = self._actor(actor)
         if actor.role not in {UserRole.ADMIN.value, UserRole.CENTRAL_TEAM.value}:
             raise HTTPException(status_code=403, detail="Only central team can verify")
-        obs = self.get(observation_id)
+        obs = self.get(observation_id, actor)
         if obs.status != ObservationStatus.PENDING_VERIFICATION.value:
             raise HTTPException(status_code=400, detail="Observation not pending verification")
         prev = obs.status
@@ -169,22 +201,30 @@ class ObservationService:
         return obs
 
     def update(self, observation_id: int, data: ObservationUpdate, actor: User) -> Observation:
-        obs = self.get(observation_id)
+        actor = self._actor(actor)
+        obs = self.get(observation_id, actor)
         if actor.role not in {UserRole.ADMIN.value, UserRole.CENTRAL_TEAM.value, UserRole.AUDITOR.value}:
             raise HTTPException(status_code=403, detail="Not allowed")
         if obs.status not in {ObservationStatus.DRAFT.value, ObservationStatus.PENDING_REVIEW.value}:
             raise HTTPException(status_code=400, detail="Cannot edit observation in current status")
-        for field, value in data.model_dump(exclude_unset=True).items():
-            if field == "severity" and value is not None:
-                setattr(obs, field, value.value if hasattr(value, "value") else value)
-            else:
-                setattr(obs, field, value)
+        payload = data.model_dump(exclude_unset=True)
+        if "region" in payload and payload["region"] is not None:
+            payload["region"] = payload["region"].value if hasattr(payload["region"], "value") else payload["region"]
+        if "segment" in payload and payload["segment"] is not None:
+            payload["segment"] = payload["segment"].value if hasattr(payload["segment"], "value") else payload["segment"]
+        if "severity" in payload and payload["severity"] is not None:
+            payload["severity"] = payload["severity"].value if hasattr(payload["severity"], "value") else payload["severity"]
+        next_region = payload.get("region", obs.region)
+        next_segment = payload.get("segment", obs.segment)
+        require_scope(actor, next_region, next_segment, action="update observations in")
+        for field, value in payload.items():
+            setattr(obs, field, value)
         self._history(obs, actor.id, "UPDATED", obs.status, obs.status)
         self.db.commit()
         self.db.refresh(obs)
         return obs
 
-    def get(self, observation_id: int) -> Observation:
+    def get(self, observation_id: int, actor: Optional[User] = None) -> Observation:
         obs = (
             self.db.query(Observation)
             .options(
@@ -198,6 +238,12 @@ class ObservationService:
         )
         if not obs:
             raise HTTPException(status_code=404, detail="Observation not found")
+        if actor is not None:
+            actor = self._actor(actor)
+            if not can_access_scope(actor, obs.region, obs.segment):
+                raise HTTPException(status_code=403, detail="Not allowed to view this observation")
+            if actor.role == UserRole.PROCESS_OWNER.value and obs.owner_id != actor.id:
+                raise HTTPException(status_code=403, detail="Not assigned to you")
         return obs
 
     def list(
@@ -207,10 +253,14 @@ class ObservationService:
         severity: Optional[str] = None,
         owner_id: Optional[int] = None,
         report_id: Optional[int] = None,
+        region: Optional[str] = None,
+        segment: Optional[str] = None,
         skip: int = 0,
         limit: int = 50,
     ) -> list[Observation]:
+        actor = self._actor(actor)
         q = self.db.query(Observation).options(joinedload(Observation.owner), joinedload(Observation.report))
+        q = apply_observation_scope(q, actor, Observation)
         if actor.role == UserRole.PROCESS_OWNER.value:
             q = q.filter(Observation.owner_id == actor.id)
         if status_filter:
@@ -221,20 +271,30 @@ class ObservationService:
             q = q.filter(Observation.owner_id == owner_id)
         if report_id:
             q = q.filter(Observation.report_id == report_id)
+        if region:
+            q = q.filter(Observation.region == region)
+        if segment:
+            q = q.filter(Observation.segment == segment)
         return q.order_by(Observation.created_at.desc()).offset(skip).limit(limit).all()
 
     def dashboard(self, actor: User) -> DashboardStats:
+        actor = self._actor(actor)
         q = self.db.query(Observation)
+        q = apply_observation_scope(q, actor, Observation)
         if actor.role == UserRole.PROCESS_OWNER.value:
             q = q.filter(Observation.owner_id == actor.id)
         rows = q.all()
         by_status = {s.value: 0 for s in ObservationStatus}
         by_severity = {s.value: 0 for s in ObservationSeverity}
+        by_region: dict[str, int] = {}
+        by_segment: dict[str, int] = {}
         overdue = 0
         now = _now()
         for obs in rows:
             by_status[obs.status] = by_status.get(obs.status, 0) + 1
             by_severity[obs.severity] = by_severity.get(obs.severity, 0) + 1
+            by_region[obs.region] = by_region.get(obs.region, 0) + 1
+            by_segment[obs.segment] = by_segment.get(obs.segment, 0) + 1
             if (
                 obs.due_date
                 and obs.status not in {ObservationStatus.CLOSED.value, ObservationStatus.REJECTED.value}
@@ -251,5 +311,7 @@ class ObservationService:
             closed=by_status[ObservationStatus.CLOSED.value],
             rejected=by_status[ObservationStatus.REJECTED.value],
             by_severity=by_severity,
+            by_region=by_region,
+            by_segment=by_segment,
             overdue=overdue,
         )

@@ -47,9 +47,27 @@ export function DashboardPage() {
           <p className="page-kicker">Operations overview</p>
           <h1>Dashboard</h1>
           <p>
-            Welcome{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}. Track the audit
-            observation pipeline from review through closure.
+            Welcome{user?.full_name ? `, ${user.full_name.split(" ")[0]}` : ""}. Showing data for your
+            assigned region and segment windows.
           </p>
+          <div className="scope-chip-row">
+            {user?.role === "ADMIN" ? (
+              <span className="scope-chip">All regions · All segments</span>
+            ) : (
+              <>
+                {(user?.regions || []).map((r) => (
+                  <span className="scope-chip" key={r}>
+                    {r}
+                  </span>
+                ))}
+                {(user?.segments || []).map((s) => (
+                  <span className="scope-chip" key={s}>
+                    {s.replaceAll("_", " ")}
+                  </span>
+                ))}
+              </>
+            )}
+          </div>
           <p className="dashboard-date">{today}</p>
         </div>
         <div className="dashboard-header-actions">
@@ -148,6 +166,8 @@ export function DashboardPage() {
                 <tr>
                   <th>Number</th>
                   <th>Title</th>
+                  <th>Region</th>
+                  <th>Segment</th>
                   <th>Severity</th>
                   <th>Status</th>
                   <th>Owner</th>
@@ -165,6 +185,8 @@ export function DashboardPage() {
                       <div className="table-title">{o.title}</div>
                       {o.report_title && <div className="table-sub">{o.report_title}</div>}
                     </td>
+                    <td>{o.region}</td>
+                    <td>{o.segment.replaceAll("_", " ")}</td>
                     <td>
                       <span className={`badge ${o.severity}`}>{o.severity}</span>
                     </td>

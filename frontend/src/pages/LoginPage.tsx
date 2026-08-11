@@ -51,7 +51,7 @@ export function LoginPage() {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         <p style={{ margin: 0, fontSize: "0.85rem" }}>
-          Dev users: admin / central1 / owner1 — passwords Admin@123 or Pass@123
+          Dev users: admin / Admin@123 · khurrum (North only) / Pass@123 · central1 / Pass@123
         </p>
       </form>
     </div>

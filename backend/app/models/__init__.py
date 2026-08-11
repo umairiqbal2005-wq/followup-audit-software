@@ -4,15 +4,28 @@ from app.models.entities import (
     ObservationHistory,
     ObservationResponse,
     User,
+    UserRegion,
+    UserSegment,
 )
-from app.models.enums import ObservationSeverity, ObservationStatus, ResponseType, UserRole
+from app.models.enums import (
+    AuditSegment,
+    ObservationSeverity,
+    ObservationStatus,
+    Region,
+    ResponseType,
+    UserRole,
+)
 
 __all__ = [
     "AuditReport",
+    "AuditSegment",
     "Observation",
     "ObservationHistory",
     "ObservationResponse",
+    "Region",
     "User",
+    "UserRegion",
+    "UserSegment",
     "ObservationSeverity",
     "ObservationStatus",
     "ResponseType",

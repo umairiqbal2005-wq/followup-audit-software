@@ -28,7 +28,7 @@ export function ObservationDetailPage() {
   useEffect(() => {
     load().catch((err) => setError(err.message));
     if (user?.role === "ADMIN" || user?.role === "CENTRAL_TEAM") {
-      api.users("PROCESS_OWNER").then(setOwners).catch(() => undefined);
+      api.users({ role: "PROCESS_OWNER" }).then(setOwners).catch(() => undefined);
     }
   }, [id, user?.role]);
 

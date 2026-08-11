@@ -7,6 +7,7 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -37,6 +38,34 @@ class User(Base):
     responses: Mapped[list["ObservationResponse"]] = relationship(
         "ObservationResponse", back_populates="responder"
     )
+    region_access: Mapped[list["UserRegion"]] = relationship(
+        "UserRegion", back_populates="user", cascade="all, delete-orphan"
+    )
+    segment_access: Mapped[list["UserSegment"]] = relationship(
+        "UserSegment", back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class UserRegion(Base):
+    __tablename__ = "user_regions"
+    __table_args__ = (UniqueConstraint("user_id", "region", name="uk_user_region"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    region: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="region_access")
+
+
+class UserSegment(Base):
+    __tablename__ = "user_segments"
+    __table_args__ = (UniqueConstraint("user_id", "segment", name="uk_user_segment"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    segment: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="segment_access")
 
 
 class AuditReport(Base):
@@ -46,6 +75,8 @@ class AuditReport(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     report_number: Mapped[str] = mapped_column(String(100), unique=True, index=True, nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    region: Mapped[str] = mapped_column(String(50), nullable=False, default="CENTRAL", index=True)
+    segment: Mapped[str] = mapped_column(String(50), nullable=False, default="BRANCH_AUDIT", index=True)
     file_name: Mapped[str | None] = mapped_column(String(500), nullable=True)
     file_path: Mapped[str | None] = mapped_column(String(1000), nullable=True)
     uploaded_by_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
@@ -67,6 +98,8 @@ class Observation(Base):
     title: Mapped[str] = mapped_column(String(500), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    region: Mapped[str] = mapped_column(String(50), nullable=False, default="CENTRAL", index=True)
+    segment: Mapped[str] = mapped_column(String(50), nullable=False, default="BRANCH_AUDIT", index=True)
     severity: Mapped[str] = mapped_column(String(50), nullable=False, default="MEDIUM")
     status: Mapped[str] = mapped_column(String(50), nullable=False, default="DRAFT", index=True)
     recommendation: Mapped[str | None] = mapped_column(Text, nullable=True)

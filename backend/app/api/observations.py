@@ -55,6 +55,8 @@ def list_observations(
     severity: Optional[str] = None,
     owner_id: Optional[int] = None,
     report_id: Optional[int] = None,
+    region: Optional[str] = None,
+    segment: Optional[str] = None,
     skip: int = 0,
     limit: int = 50,
 ):
@@ -64,6 +66,8 @@ def list_observations(
         severity=severity,
         owner_id=owner_id,
         report_id=report_id,
+        region=region,
+        segment=segment,
         skip=skip,
         limit=limit,
     )
@@ -76,18 +80,18 @@ def create_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).create(payload, user)
-    obs = ObservationService(db).get(obs.id)
-    return _to_out(obs)
+    service = ObservationService(db)
+    obs = service.create(payload, user)
+    return _to_out(service.get(obs.id, user))
 
 
 @router.get("/{observation_id}", response_model=ObservationDetail)
 def get_observation(
     observation_id: int,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_user)],
 ):
-    return _to_detail(ObservationService(db).get(observation_id))
+    return _to_detail(ObservationService(db).get(observation_id, user))
 
 
 @router.patch("/{observation_id}", response_model=ObservationOut)
@@ -97,8 +101,9 @@ def update_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).update(observation_id, payload, user)
-    return _to_out(ObservationService(db).get(obs.id))
+    service = ObservationService(db)
+    obs = service.update(observation_id, payload, user)
+    return _to_out(service.get(obs.id, user))
 
 
 @router.post("/{observation_id}/submit", response_model=ObservationOut)
@@ -107,8 +112,9 @@ def submit_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).submit_for_review(observation_id, user)
-    return _to_out(ObservationService(db).get(obs.id))
+    service = ObservationService(db)
+    obs = service.submit_for_review(observation_id, user)
+    return _to_out(service.get(obs.id, user))
 
 
 @router.post("/{observation_id}/assign", response_model=ObservationOut)
@@ -118,8 +124,9 @@ def assign_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).assign(observation_id, payload, user)
-    return _to_out(ObservationService(db).get(obs.id))
+    service = ObservationService(db)
+    obs = service.assign(observation_id, payload, user)
+    return _to_out(service.get(obs.id, user))
 
 
 @router.post("/{observation_id}/respond", response_model=ObservationOut)
@@ -129,8 +136,9 @@ def respond_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).respond(observation_id, payload, user)
-    return _to_out(ObservationService(db).get(obs.id))
+    service = ObservationService(db)
+    obs = service.respond(observation_id, payload, user)
+    return _to_out(service.get(obs.id, user))
 
 
 @router.post("/{observation_id}/verify", response_model=ObservationOut)
@@ -140,5 +148,6 @@ def verify_observation(
     db: Annotated[Session, Depends(get_db)],
     user: Annotated[User, Depends(get_current_user)],
 ):
-    obs = ObservationService(db).verify(observation_id, payload, user)
-    return _to_out(ObservationService(db).get(obs.id))
+    service = ObservationService(db)
+    obs = service.verify(observation_id, payload, user)
+    return _to_out(service.get(obs.id, user))

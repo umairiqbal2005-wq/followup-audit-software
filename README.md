@@ -41,6 +41,11 @@ Enterprise application for tracking audit observations from report upload throug
 | `AUDITOR` | Create reports/observations, read status |
 | `VIEWER` | Dashboard and summary reports only |
 
+Region windows: `NORTH`, `SOUTH`, `CENTRAL`  
+Segments: `BRANCH_AUDIT`, `SHARIAH`, `MANAGEMENT`, `OTHER`
+
+Admins assign both functional role and region/segment access on the Users page. Non-admin users only see reports and observations inside their assigned windows.
+
 ## Quick Start (Development)
 
 ### Prerequisites
@@ -73,6 +78,9 @@ Seeded local users (LDAP disabled):
 | `owner1` | `Pass@123` | PROCESS_OWNER |
 | `auditor1` | `Pass@123` | AUDITOR |
 | `viewer1` | `Pass@123` | VIEWER |
+| `khurrum` | `Pass@123` | VIEWER (North region only, all segments) |
+| `north_auditor` | `Pass@123` | AUDITOR (North) |
+| `south_viewer` | `Pass@123` | VIEWER (South) |
 
 ### Frontend
 

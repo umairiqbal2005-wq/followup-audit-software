@@ -35,6 +35,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 import type {
+  AccessCatalog,
   AuditReport,
   DashboardStats,
   Observation,
@@ -49,7 +50,15 @@ export const api = {
       body: JSON.stringify({ username, password }),
     }),
   me: () => request<User>("/api/auth/me"),
-  users: (role?: string) => request<User[]>(`/api/users${role ? `?role=${role}` : ""}`),
+  accessCatalog: () => request<AccessCatalog>("/api/auth/access-catalog"),
+  users: (params?: Record<string, string>) => {
+    const qs = params ? `?${new URLSearchParams(params)}` : "";
+    return request<User[]>(`/api/users${qs}`);
+  },
+  updateUser: (id: number, body: object) =>
+    request<User>(`/api/users/${id}`, { method: "PATCH", body: JSON.stringify(body) }),
+  createUser: (body: object) =>
+    request<User>("/api/users", { method: "POST", body: JSON.stringify(body) }),
   dashboard: () => request<DashboardStats>("/api/observations/dashboard"),
   observations: (params?: Record<string, string>) => {
     const qs = params ? `?${new URLSearchParams(params)}` : "";

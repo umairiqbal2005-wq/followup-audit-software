@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.api.deps import get_current_user
 from app.core.database import get_db
-from app.models import Observation, User
+from app.models import AuditSegment, Observation, Region, User
 from app.schemas import AuditReportCreate, AuditReportOut
 from app.services.reports import ReportService
 
@@ -20,12 +20,12 @@ def _observation_count(db: Session, report_id: int) -> int:
 @router.get("", response_model=list[AuditReportOut])
 def list_reports(
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_user)],
     skip: int = 0,
     limit: int = 50,
 ):
     service = ReportService(db)
-    reports = service.list(skip=skip, limit=limit)
+    reports = service.list(user, skip=skip, limit=limit)
     result = []
     for r in reports:
         out = AuditReportOut.model_validate(r)
@@ -41,10 +41,18 @@ async def create_report(
     title: str = Form(...),
     report_number: str = Form(...),
     description: Optional[str] = Form(None),
+    region: str = Form("CENTRAL"),
+    segment: str = Form("BRANCH_AUDIT"),
     file: Optional[UploadFile] = File(None),
 ):
     service = ReportService(db)
-    data = AuditReportCreate(title=title, report_number=report_number, description=description)
+    data = AuditReportCreate(
+        title=title,
+        report_number=report_number,
+        description=description,
+        region=Region(region),
+        segment=AuditSegment(segment),
+    )
     report = service.create(data, user, file)
     out = AuditReportOut.model_validate(report)
     out.observation_count = 0
@@ -55,9 +63,9 @@ async def create_report(
 def get_report(
     report_id: int,
     db: Annotated[Session, Depends(get_db)],
-    _: Annotated[User, Depends(get_current_user)],
+    user: Annotated[User, Depends(get_current_user)],
 ):
-    report = ReportService(db).get(report_id)
+    report = ReportService(db).get(report_id, user)
     out = AuditReportOut.model_validate(report)
     out.observation_count = _observation_count(db, report.id)
     return out

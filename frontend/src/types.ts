@@ -1,4 +1,6 @@
 export type UserRole = "ADMIN" | "CENTRAL_TEAM" | "PROCESS_OWNER" | "AUDITOR" | "VIEWER";
+export type Region = "NORTH" | "SOUTH" | "CENTRAL";
+export type AuditSegment = "BRANCH_AUDIT" | "SHARIAH" | "MANAGEMENT" | "OTHER";
 export type ObservationStatus =
   | "DRAFT"
   | "PENDING_REVIEW"
@@ -19,6 +21,14 @@ export interface User {
   department?: string | null;
   is_active: boolean;
   created_at: string;
+  regions: Region[];
+  segments: AuditSegment[];
+}
+
+export interface AccessCatalog {
+  roles: UserRole[];
+  regions: Region[];
+  segments: AuditSegment[];
 }
 
 export interface AuditReport {
@@ -26,6 +36,8 @@ export interface AuditReport {
   title: string;
   report_number: string;
   description?: string | null;
+  region: Region;
+  segment: AuditSegment;
   file_name?: string | null;
   uploaded_by_id: number;
   audit_date?: string | null;
@@ -40,6 +52,8 @@ export interface Observation {
   title: string;
   description: string;
   category?: string | null;
+  region: Region;
+  segment: AuditSegment;
   severity: ObservationSeverity;
   status: ObservationStatus;
   recommendation?: string | null;
@@ -86,5 +100,20 @@ export interface DashboardStats {
   closed: number;
   rejected: number;
   by_severity: Record<string, number>;
+  by_region: Record<string, number>;
+  by_segment: Record<string, number>;
   overdue: number;
 }
+
+export const REGION_LABELS: Record<Region, string> = {
+  NORTH: "North",
+  SOUTH: "South",
+  CENTRAL: "Central",
+};
+
+export const SEGMENT_LABELS: Record<AuditSegment, string> = {
+  BRANCH_AUDIT: "Branch Audit",
+  SHARIAH: "Shariah",
+  MANAGEMENT: "Management",
+  OTHER: "Other",
+};

@@ -1,16 +1,32 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.api.deps import get_current_user, require_roles
 from app.core.database import get_db
 from app.core.security import hash_password
-from app.models import User, UserRole
-from app.schemas import LoginRequest, TokenResponse, UserCreate, UserOut, UserUpdate
+from app.models import AuditSegment, Region, User, UserRole
+from app.schemas import AccessCatalog, LoginRequest, TokenResponse, UserCreate, UserOut, UserUpdate
+from app.services.access import ALL_REGIONS, ALL_SEGMENTS, set_user_regions, set_user_segments
 from app.services.auth import AuthService
 
 router = APIRouter(prefix="/auth", tags=["auth"])
+
+
+def _user_out(user: User) -> UserOut:
+    return UserOut(
+        id=user.id,
+        username=user.username,
+        email=user.email,
+        full_name=user.full_name,
+        role=UserRole(user.role),
+        department=user.department,
+        is_active=user.is_active,
+        created_at=user.created_at,
+        regions=sorted({r.region for r in user.region_access or []}),
+        segments=sorted({s.segment for s in user.segment_access or []}),
+    )
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -23,8 +39,23 @@ def login(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]):
 
 
 @router.get("/me", response_model=UserOut)
-def me(user: Annotated[User, Depends(get_current_user)]):
-    return user
+def me(user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]):
+    loaded = (
+        db.query(User)
+        .options(joinedload(User.region_access), joinedload(User.segment_access))
+        .filter(User.id == user.id)
+        .one()
+    )
+    return _user_out(loaded)
+
+
+@router.get("/access-catalog", response_model=AccessCatalog)
+def access_catalog(_: Annotated[User, Depends(get_current_user)]):
+    return AccessCatalog(
+        roles=[r.value for r in UserRole],
+        regions=ALL_REGIONS,
+        segments=ALL_SEGMENTS,
+    )
 
 
 users_router = APIRouter(prefix="/users", tags=["users"])
@@ -37,11 +68,15 @@ def list_users(
     skip: int = 0,
     limit: int = 100,
     role: str | None = None,
+    region: str | None = None,
 ):
-    q = db.query(User)
+    q = db.query(User).options(joinedload(User.region_access), joinedload(User.segment_access))
     if role:
         q = q.filter(User.role == role)
-    return q.order_by(User.full_name).offset(skip).limit(limit).all()
+    users = q.order_by(User.full_name).offset(skip).limit(limit).all()
+    if region:
+        users = [u for u in users if region in {r.region for r in u.region_access}]
+    return [_user_out(u) for u in users]
 
 
 @users_router.post("", response_model=UserOut, status_code=201)
@@ -62,9 +97,18 @@ def create_user(
         is_active=True,
     )
     db.add(user)
+    db.flush()
+    set_user_regions(db, user, [r.value for r in payload.regions])
+    set_user_segments(db, user, [s.value for s in payload.segments])
     db.commit()
     db.refresh(user)
-    return user
+    user = (
+        db.query(User)
+        .options(joinedload(User.region_access), joinedload(User.segment_access))
+        .filter(User.id == user.id)
+        .one()
+    )
+    return _user_out(user)
 
 
 @users_router.patch("/{user_id}", response_model=UserOut)
@@ -74,10 +118,17 @@ def update_user(
     db: Annotated[Session, Depends(get_db)],
     _: Annotated[User, Depends(require_roles(UserRole.ADMIN))],
 ):
-    user = db.query(User).filter(User.id == user_id).first()
+    user = (
+        db.query(User)
+        .options(joinedload(User.region_access), joinedload(User.segment_access))
+        .filter(User.id == user_id)
+        .first()
+    )
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     data = payload.model_dump(exclude_unset=True)
+    regions = data.pop("regions", None)
+    segments = data.pop("segments", None)
     if "password" in data:
         pwd = data.pop("password")
         if pwd:
@@ -86,6 +137,15 @@ def update_user(
         data["role"] = data["role"].value if hasattr(data["role"], "value") else data["role"]
     for key, value in data.items():
         setattr(user, key, value)
+    if regions is not None:
+        set_user_regions(db, user, [Region(r).value if not isinstance(r, str) else r for r in regions])
+    if segments is not None:
+        set_user_segments(db, user, [AuditSegment(s).value if not isinstance(s, str) else s for s in segments])
     db.commit()
-    db.refresh(user)
-    return user
+    user = (
+        db.query(User)
+        .options(joinedload(User.region_access), joinedload(User.segment_access))
+        .filter(User.id == user_id)
+        .one()
+    )
+    return _user_out(user)

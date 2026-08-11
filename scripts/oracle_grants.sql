@@ -9,6 +9,8 @@ GRANT SELECT, INSERT, UPDATE ON audit_reports TO aop_app;
 GRANT SELECT, INSERT, UPDATE ON observations TO aop_app;
 GRANT SELECT, INSERT, UPDATE ON observation_responses TO aop_app;
 GRANT SELECT, INSERT ON observation_history TO aop_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_regions TO aop_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON user_segments TO aop_app;
 -- Intentionally NO DELETE on core tables for the runtime user.
 -- Intentionally NO UPDATE/DELETE on observation_history.
 

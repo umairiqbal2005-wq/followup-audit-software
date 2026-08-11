@@ -3,7 +3,14 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.models.enums import ObservationSeverity, ObservationStatus, ResponseType, UserRole
+from app.models.enums import (
+    AuditSegment,
+    ObservationSeverity,
+    ObservationStatus,
+    Region,
+    ResponseType,
+    UserRole,
+)
 
 
 class TokenResponse(BaseModel):
@@ -27,6 +34,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: Optional[str] = Field(default=None, min_length=8)
+    regions: list[Region] = Field(default_factory=list)
+    segments: list[AuditSegment] = Field(default_factory=list)
 
 
 class UserUpdate(BaseModel):
@@ -36,6 +45,8 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     is_active: Optional[bool] = None
     password: Optional[str] = Field(default=None, min_length=8)
+    regions: Optional[list[Region]] = None
+    segments: Optional[list[AuditSegment]] = None
 
 
 class UserOut(UserBase):
@@ -44,6 +55,14 @@ class UserOut(UserBase):
     id: int
     is_active: bool
     created_at: datetime
+    regions: list[str] = Field(default_factory=list)
+    segments: list[str] = Field(default_factory=list)
+
+
+class AccessCatalog(BaseModel):
+    roles: list[str]
+    regions: list[str]
+    segments: list[str]
 
 
 class AuditReportCreate(BaseModel):
@@ -51,6 +70,8 @@ class AuditReportCreate(BaseModel):
     report_number: str
     description: Optional[str] = None
     audit_date: Optional[datetime] = None
+    region: Region = Region.CENTRAL
+    segment: AuditSegment = AuditSegment.BRANCH_AUDIT
 
 
 class AuditReportOut(BaseModel):
@@ -60,6 +81,8 @@ class AuditReportOut(BaseModel):
     title: str
     report_number: str
     description: Optional[str] = None
+    region: str
+    segment: str
     file_name: Optional[str] = None
     uploaded_by_id: int
     audit_date: Optional[datetime] = None
@@ -74,6 +97,8 @@ class ObservationCreate(BaseModel):
     category: Optional[str] = None
     severity: ObservationSeverity = ObservationSeverity.MEDIUM
     recommendation: Optional[str] = None
+    region: Optional[Region] = None
+    segment: Optional[AuditSegment] = None
 
 
 class ObservationUpdate(BaseModel):
@@ -82,6 +107,8 @@ class ObservationUpdate(BaseModel):
     category: Optional[str] = None
     severity: Optional[ObservationSeverity] = None
     recommendation: Optional[str] = None
+    region: Optional[Region] = None
+    segment: Optional[AuditSegment] = None
 
 
 class ObservationAssign(BaseModel):
@@ -135,6 +162,8 @@ class ObservationOut(BaseModel):
     title: str
     description: str
     category: Optional[str] = None
+    region: str
+    segment: str
     severity: str
     status: str
     recommendation: Optional[str] = None
@@ -164,4 +193,6 @@ class DashboardStats(BaseModel):
     closed: int
     rejected: int
     by_severity: dict[str, int]
+    by_region: dict[str, int]
+    by_segment: dict[str, int]
     overdue: int

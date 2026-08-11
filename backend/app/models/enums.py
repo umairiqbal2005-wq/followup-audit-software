@@ -9,6 +9,19 @@ class UserRole(str, Enum):
     VIEWER = "VIEWER"
 
 
+class Region(str, Enum):
+    NORTH = "NORTH"
+    SOUTH = "SOUTH"
+    CENTRAL = "CENTRAL"
+
+
+class AuditSegment(str, Enum):
+    BRANCH_AUDIT = "BRANCH_AUDIT"
+    SHARIAH = "SHARIAH"
+    MANAGEMENT = "MANAGEMENT"
+    OTHER = "OTHER"
+
+
 class ObservationStatus(str, Enum):
     DRAFT = "DRAFT"
     PENDING_REVIEW = "PENDING_REVIEW"
