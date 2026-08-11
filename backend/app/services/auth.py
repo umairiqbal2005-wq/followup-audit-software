@@ -181,14 +181,6 @@ class AuthService:
             ("south_viewer", "south.viewer@example.com", "South Viewer", UserRole.VIEWER, "South Region", [Region.SOUTH.value], ALL_SEGMENTS),
         ]
         for username, email, name, role, dept, regions, segments in demos:
-            existing = self.db.query(User).filter(User.username == username).first()
-            if existing:
-                # Keep passwords if already created; still sync role/scope for demos
-                existing.role = role.value
-                existing.is_active = True
-                set_user_regions(self.db, existing, regions)
-                set_user_segments(self.db, existing, segments)
-                continue
             self._upsert_local_user(
                 username=username,
                 email=email,
