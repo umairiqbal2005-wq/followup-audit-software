@@ -4,7 +4,7 @@ import { useAuth } from "../hooks/useAuth";
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const [username, setUsername] = useState("umair");
+  const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("demo123");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -16,9 +16,14 @@ export function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      await login(username.trim(), password);
+      await login(username.trim(), password.trim());
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      const msg = err instanceof Error ? err.message : "Login failed";
+      if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+        setError("Cannot reach API. Start backend on port 8000, then retry.");
+      } else {
+        setError(msg);
+      }
     } finally {
       setBusy(false);
     }
@@ -50,17 +55,30 @@ export function LoginPage() {
         <button className="btn" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
+        <div className="actions">
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setUsername("admin");
+              setPassword("demo123");
+            }}
+          >
+            Fill admin / demo123
+          </button>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => {
+              setUsername("umair");
+              setPassword("demo123");
+            }}
+          >
+            Fill umair / demo123
+          </button>
+        </div>
         <div style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.45 }}>
-          <strong style={{ color: "var(--ink)" }}>Demo password for all users:</strong> <code>demo123</code>
-          <div>
-            <code>umair</code> — full admin (roles & regions)
-          </div>
-          <div>
-            <code>admin</code> — full admin
-          </div>
-          <div style={{ marginTop: "0.45rem" }}>
-            Regional demo: <code>khurrum</code> (North only)
-          </div>
+          <strong style={{ color: "var(--ink)" }}>Password for every demo user is</strong> <code>demo123</code>
         </div>
       </form>
     </div>

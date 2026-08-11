@@ -1,6 +1,7 @@
 from typing import Optional
 
 from ldap3 import ALL, Connection, Server
+from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 from app.core.config import get_settings
@@ -15,17 +16,34 @@ class AuthService:
         self.settings = get_settings()
 
     def authenticate(self, username: str, password: str) -> Optional[User]:
+        username = (username or "").strip()
+        password = password or ""
+        if not username or not password:
+            return None
+
         if self.settings.ldap_enabled:
             user = self._authenticate_ldap(username, password)
             if user:
                 return user
-        return self._authenticate_local(username, password)
+
+        user = self._authenticate_local(username, password)
+        if user:
+            return user
+
+        # Dev self-heal: recreate/reset demo accounts then retry once.
+        # Fixes stale SQLite/Docker volumes that still hold old password hashes.
+        if self.settings.should_bootstrap_dev_users:
+            self.ensure_dev_admin()
+            user = self._authenticate_local(username, password)
+            if user:
+                return user
+        return None
 
     def _authenticate_local(self, username: str, password: str) -> Optional[User]:
         user = (
             self.db.query(User)
             .options(joinedload(User.region_access), joinedload(User.segment_access))
-            .filter(User.username == username, User.is_active.is_(True))
+            .filter(func.lower(User.username) == username.lower(), User.is_active.is_(True))
             .first()
         )
         if not user or not user.hashed_password:

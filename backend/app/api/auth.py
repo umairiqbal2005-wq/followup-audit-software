@@ -34,14 +34,37 @@ def _user_out(user: User) -> UserOut:
 def login(payload: LoginRequest, db: Annotated[Session, Depends(get_db)]):
     service = AuthService(db)
     username = (payload.username or "").strip()
-    password = payload.password or ""
+    password = (payload.password or "").strip()
     user = service.authenticate(username, password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid username or password. Dev logins: admin/demo123 or umair/demo123",
+            detail="Invalid username or password. Use admin / demo123 (or umair / demo123).",
         )
     return service.issue_token(user)
+
+
+@router.get("/demo-logins")
+def demo_logins(db: Annotated[Session, Depends(get_db)]):
+    """Development helper: shows which demo accounts exist and are active."""
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    if not settings.should_bootstrap_dev_users:
+        return {"enabled": False, "users": []}
+    # Ensure accounts exist before listing
+    AuthService(db).ensure_dev_admin()
+    rows = (
+        db.query(User)
+        .filter(User.username.in_(["admin", "umair", "khurrum", "central1", "owner1"]))
+        .order_by(User.username)
+        .all()
+    )
+    return {
+        "enabled": True,
+        "password": settings.dev_admin_password,
+        "users": [{"username": u.username, "role": u.role, "active": u.is_active} for u in rows],
+    }
 
 
 @router.get("/me", response_model=UserOut)
