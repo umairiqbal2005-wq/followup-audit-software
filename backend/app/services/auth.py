@@ -97,22 +97,80 @@ class AuthService:
             "expires_in": self.settings.access_token_expire_minutes * 60,
         }
 
+    def _upsert_local_user(
+        self,
+        *,
+        username: str,
+        email: str,
+        full_name: str,
+        role: UserRole,
+        password: str,
+        department: str | None,
+        regions: list[str],
+        segments: list[str],
+        reset_password: bool = True,
+    ) -> User:
+        user = self.db.query(User).filter(User.username == username).first()
+        if not user:
+            user = User(
+                username=username,
+                email=email,
+                full_name=full_name,
+                role=role.value,
+                department=department,
+                hashed_password=hash_password(password),
+                is_active=True,
+            )
+            self.db.add(user)
+            self.db.flush()
+        else:
+            user.email = email
+            user.full_name = full_name
+            user.role = role.value
+            user.department = department
+            user.is_active = True
+            if reset_password:
+                user.hashed_password = hash_password(password)
+        set_user_regions(self.db, user, regions)
+        set_user_segments(self.db, user, segments)
+        return user
+
     def ensure_dev_admin(self) -> None:
+        """
+        Idempotent local bootstrap:
+        - always ensure `admin` and `umair` exist as ADMIN with known passwords
+        - seed demo regional users if missing
+        - grant every ADMIN full region/segment lists for UI clarity
+        """
         if not self.settings.should_bootstrap_dev_users:
             return
-        existing = self.db.query(User).filter(User.username == self.settings.dev_admin_username).first()
-        if existing:
-            return
-        admin = User(
+
+        # Primary break-glass admin
+        self._upsert_local_user(
             username=self.settings.dev_admin_username,
             email=self.settings.dev_admin_email,
             full_name="System Administrator",
-            role=UserRole.ADMIN.value,
-            hashed_password=hash_password(self.settings.dev_admin_password),
+            role=UserRole.ADMIN,
+            password=self.settings.dev_admin_password,
             department="IT",
-            is_active=True,
+            regions=ALL_REGIONS,
+            segments=ALL_SEGMENTS,
+            reset_password=True,
         )
-        self.db.add(admin)
+
+        # Project owner admin (Umair)
+        self._upsert_local_user(
+            username="umair",
+            email="umair.iqbal2005@gmail.com",
+            full_name="Umair Iqbal",
+            role=UserRole.ADMIN,
+            password="Umair@123",
+            department="IT",
+            regions=ALL_REGIONS,
+            segments=ALL_SEGMENTS,
+            reset_password=True,
+        )
+
         demos = [
             ("central1", "central1@example.com", "Central Reviewer", UserRole.CENTRAL_TEAM, "Audit", ALL_REGIONS, ALL_SEGMENTS),
             ("owner1", "owner1@example.com", "Process Owner", UserRole.PROCESS_OWNER, "Operations", [Region.CENTRAL.value], ALL_SEGMENTS),
@@ -123,17 +181,30 @@ class AuthService:
             ("south_viewer", "south.viewer@example.com", "South Viewer", UserRole.VIEWER, "South Region", [Region.SOUTH.value], ALL_SEGMENTS),
         ]
         for username, email, name, role, dept, regions, segments in demos:
-            user = User(
+            existing = self.db.query(User).filter(User.username == username).first()
+            if existing:
+                # Keep passwords if already created; still sync role/scope for demos
+                existing.role = role.value
+                existing.is_active = True
+                set_user_regions(self.db, existing, regions)
+                set_user_segments(self.db, existing, segments)
+                continue
+            self._upsert_local_user(
                 username=username,
                 email=email,
                 full_name=name,
-                role=role.value,
-                hashed_password=hash_password("Pass@123"),
+                role=role,
+                password="Pass@123",
                 department=dept,
-                is_active=True,
+                regions=regions,
+                segments=segments,
+                reset_password=True,
             )
-            self.db.add(user)
-            self.db.flush()
-            set_user_regions(self.db, user, regions)
-            set_user_segments(self.db, user, segments)
+
+        # Any ADMIN should have full catalog checked for the Users UI
+        admins = self.db.query(User).filter(User.role == UserRole.ADMIN.value).all()
+        for admin in admins:
+            set_user_regions(self.db, admin, ALL_REGIONS)
+            set_user_segments(self.db, admin, ALL_SEGMENTS)
+
         self.db.commit()

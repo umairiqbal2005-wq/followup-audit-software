@@ -15,12 +15,13 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 def _user_out(user: User) -> UserOut:
+    role_value = (user.role or UserRole.VIEWER.value).upper()
     return UserOut(
         id=user.id,
         username=user.username,
         email=user.email,
         full_name=user.full_name,
-        role=UserRole(user.role),
+        role=UserRole(role_value),
         department=user.department,
         is_active=user.is_active,
         created_at=user.created_at,

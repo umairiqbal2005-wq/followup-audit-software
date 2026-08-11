@@ -1,6 +1,6 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
-import { REGION_LABELS, SEGMENT_LABELS } from "../types";
+import { REGION_LABELS, SEGMENT_LABELS, type Region, type AuditSegment } from "../types";
 
 const links = [
   { to: "/", label: "Dashboard" },
@@ -8,8 +8,20 @@ const links = [
   { to: "/reports", label: "Reports" },
 ];
 
+function isAdminRole(role?: string | null) {
+  return (role || "").toUpperCase() === "ADMIN";
+}
+
+function canManageUsers(role?: string | null) {
+  const r = (role || "").toUpperCase();
+  return r === "ADMIN" || r === "CENTRAL_TEAM";
+}
+
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const role = (user?.role || "").toUpperCase();
+  const regions = user?.regions || [];
+  const segments = user?.segments || [];
 
   return (
     <div className="app-shell">
@@ -24,31 +36,29 @@ export function AppLayout() {
               {link.label}
             </NavLink>
           ))}
-          {(user?.role === "ADMIN" || user?.role === "CENTRAL_TEAM") && (
-            <NavLink to="/users">Users</NavLink>
-          )}
+          {canManageUsers(role) && <NavLink to="/users">Users & roles</NavLink>}
         </nav>
         <div className="user-card">
-          <strong>{user?.full_name}</strong>
-          <div>{user?.role.replaceAll("_", " ")}</div>
+          <strong>{user?.full_name || user?.username}</strong>
+          <div>{role.replaceAll("_", " ") || "UNKNOWN"}</div>
           <div className="scope-chip-row">
-            {user?.role === "ADMIN" ? (
+            {isAdminRole(role) ? (
               <span className="scope-chip">All regions</span>
             ) : (
-              (user?.regions || []).map((r) => (
+              regions.map((r) => (
                 <span className="scope-chip" key={r}>
-                  {REGION_LABELS[r]}
+                  {REGION_LABELS[r as Region] || r}
                 </span>
               ))
             )}
           </div>
           <div className="scope-chip-row">
-            {user?.role === "ADMIN" ? (
+            {isAdminRole(role) ? (
               <span className="scope-chip">All segments</span>
             ) : (
-              (user?.segments || []).slice(0, 3).map((s) => (
+              segments.slice(0, 3).map((s) => (
                 <span className="scope-chip" key={s}>
-                  {SEGMENT_LABELS[s]}
+                  {SEGMENT_LABELS[s as AuditSegment] || s}
                 </span>
               ))
             )}

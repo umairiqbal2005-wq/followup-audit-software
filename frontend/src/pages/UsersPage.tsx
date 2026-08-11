@@ -31,7 +31,7 @@ export function UsersPage() {
   });
 
   const selected = useMemo(() => users.find((u) => u.id === selectedId) || null, [users, selectedId]);
-  const isAdmin = me?.role === "ADMIN";
+  const isAdmin = (me?.role || "").toUpperCase() === "ADMIN";
 
   async function load() {
     const [rows, cat] = await Promise.all([api.users(), api.accessCatalog()]);
@@ -222,13 +222,17 @@ export function UsersPage() {
                     <div className="table-sub">{u.username}</div>
                   </td>
                   <td>
-                    <span className="badge">{u.role.replaceAll("_", " ")}</span>
+                    <span className="badge">{(u.role || "").replaceAll("_", " ")}</span>
                   </td>
-                  <td>{u.role === "ADMIN" ? "All" : (u.regions || []).map((r) => REGION_LABELS[r]).join(", ") || "—"}</td>
                   <td>
-                    {u.role === "ADMIN"
+                    {(u.role || "").toUpperCase() === "ADMIN"
                       ? "All"
-                      : (u.segments || []).map((s) => SEGMENT_LABELS[s]).join(", ") || "—"}
+                      : (u.regions || []).map((r) => REGION_LABELS[r] || r).join(", ") || "—"}
+                  </td>
+                  <td>
+                    {(u.role || "").toUpperCase() === "ADMIN"
+                      ? "All"
+                      : (u.segments || []).map((s) => SEGMENT_LABELS[s] || s).join(", ") || "—"}
                   </td>
                 </tr>
               ))}

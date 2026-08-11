@@ -74,6 +74,7 @@ Seeded local users (LDAP disabled):
 | Username | Password | Role |
 |----------|----------|------|
 | `admin` | `Admin@123` | ADMIN |
+| `umair` | `Umair@123` | ADMIN (owner — manage roles & regions) |
 | `central1` | `Pass@123` | CENTRAL_TEAM |
 | `owner1` | `Pass@123` | PROCESS_OWNER |
 | `auditor1` | `Pass@123` | AUDITOR |

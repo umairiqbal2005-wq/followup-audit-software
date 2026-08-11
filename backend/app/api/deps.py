@@ -34,7 +34,8 @@ def require_roles(*roles: UserRole):
     allowed = {r.value for r in roles}
 
     def _checker(user: Annotated[User, Depends(get_current_user)]) -> User:
-        if user.role not in allowed and user.role != UserRole.ADMIN.value:
+        role = (user.role or "").upper()
+        if role not in allowed and role != UserRole.ADMIN.value:
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient permissions")
         return user
 

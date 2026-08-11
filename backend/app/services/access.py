@@ -28,7 +28,7 @@ def load_user_access(db: Session, user: User) -> User:
 
 
 def is_global_admin(user: User) -> bool:
-    return user.role == UserRole.ADMIN.value
+    return (user.role or "").upper() == UserRole.ADMIN.value
 
 
 def assigned_regions(user: User) -> set[str]:

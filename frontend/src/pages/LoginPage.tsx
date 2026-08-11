@@ -4,8 +4,8 @@ import { useAuth } from "../hooks/useAuth";
 
 export function LoginPage() {
   const { user, login } = useAuth();
-  const [username, setUsername] = useState("admin");
-  const [password, setPassword] = useState("Admin@123");
+  const [username, setUsername] = useState("umair");
+  const [password, setPassword] = useState("Umair@123");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -16,7 +16,7 @@ export function LoginPage() {
     setBusy(true);
     setError("");
     try {
-      await login(username, password);
+      await login(username.trim(), password);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -50,9 +50,18 @@ export function LoginPage() {
         <button className="btn" disabled={busy}>
           {busy ? "Signing in…" : "Sign in"}
         </button>
-        <p style={{ margin: 0, fontSize: "0.85rem" }}>
-          Dev users: admin / Admin@123 · khurrum (North only) / Pass@123 · central1 / Pass@123
-        </p>
+        <div style={{ margin: 0, fontSize: "0.9rem", color: "var(--muted)", lineHeight: 1.45 }}>
+          <strong style={{ color: "var(--ink)" }}>Admin logins</strong>
+          <div>
+            <code>umair</code> / <code>Umair@123</code> — full admin (roles & regions)
+          </div>
+          <div>
+            <code>admin</code> / <code>Admin@123</code> — full admin
+          </div>
+          <div style={{ marginTop: "0.45rem" }}>
+            Regional demo: <code>khurrum</code> / <code>Pass@123</code> (North only)
+          </div>
+        </div>
       </form>
     </div>
   );
