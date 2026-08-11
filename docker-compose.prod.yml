@@ -1,0 +1,50 @@
+# Production-oriented compose overlay example.
+# Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+services:
+  backend:
+    environment:
+      APP_ENV: production
+      DEBUG: "false"
+      DB_BACKEND: oracle
+      ORACLE_USER: ${ORACLE_USER:-aop_app}
+      ORACLE_PASSWORD: ${ORACLE_PASSWORD}
+      ORACLE_DSN: ${ORACLE_DSN}
+      ORACLE_SCHEMA: ${ORACLE_SCHEMA:-AOP_OWNER}
+      ORACLE_WALLET_LOCATION: ${ORACLE_WALLET_LOCATION:-}
+      ORACLE_CONFIG_DIR: ${ORACLE_CONFIG_DIR:-}
+      ORACLE_WALLET_PASSWORD: ${ORACLE_WALLET_PASSWORD:-}
+      ORACLE_CALL_TIMEOUT_MS: ${ORACLE_CALL_TIMEOUT_MS:-60000}
+      ORACLE_POOL_SIZE: ${ORACLE_POOL_SIZE:-20}
+      ORACLE_MAX_OVERFLOW: ${ORACLE_MAX_OVERFLOW:-40}
+      ORACLE_POOL_RECYCLE_SEC: ${ORACLE_POOL_RECYCLE_SEC:-1800}
+      ORACLE_MANAGE_SCHEMA_EXTERNALLY: "true"
+      DISABLE_DEV_BOOTSTRAP: "true"
+      HEALTH_CHECK_DB: "true"
+      REDIS_ENABLED: "true"
+      REDIS_URL: redis://redis:6379/0
+      LDAP_ENABLED: "true"
+      LDAP_URL: ${LDAP_URL}
+      LDAP_BASE_DN: ${LDAP_BASE_DN}
+      LDAP_BIND_DN: ${LDAP_BIND_DN}
+      LDAP_BIND_PASSWORD: ${LDAP_BIND_PASSWORD}
+      SECRET_KEY: ${SECRET_KEY}
+    deploy:
+      replicas: 2
+    depends_on:
+      - redis
+
+  redis:
+    profiles: []
+    restart: always
+
+  nginx:
+    image: nginx:1.27-alpine
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - backend
+      - frontend
